@@ -1,10 +1,11 @@
 import sys
-sys.path.append("C:\\Users\\陈yk\\Desktop\\flaskb\\WWW")#更改为当前项目的绝对地址
+sys.path.append("C:\\Users\\陈yk\\Desktop\\智能系统作业\\大作业\\一级项目Ⅱ(1)\\一级项目Ⅱ\\FlaskHouduan\\flaskb\\WWW")#更改为当前项目的绝对地址
 import base64
 import io
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import os
+from flask_cors import CORS
 import random
 from werkzeug.utils import secure_filename
 from predict import predict_image
@@ -13,7 +14,7 @@ from PIL import Image
 # # 获取当前位置的绝对路径
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
-
+CORS(app)
 #获取上传图片并推理
 @app.route("/post",methods=["POST"])
 def post():
@@ -21,7 +22,7 @@ def post():
         img_base64 = request.form.get('picture')
         image = base64.b64decode(img_base64)
         image =Image.open(io.BytesIO(image))
-        save_path = "C:\\Users\\陈yk\\Desktop\\flaskb\\WWW\\inputs\\inputs."+ image.format.lower()
+        save_path = "C:\\Users\\陈yk\\Desktop\\智能系统作业\\大作业\\一级项目Ⅱ(1)\\一级项目Ⅱ\\FlaskHouduan\\flaskb\\WWW\\inputs."+ image.format.lower()
         image.save(save_path)
         #返回输出的图片的名称
         res = predict_image(save_path)
@@ -34,7 +35,7 @@ def post():
 @app.route("/outputs/<path:filename>", methods=["GET"])
 def get(filename):
    
-    return send_from_directory('C:\\Users\\陈yk\\Desktop\\flaskb\\WWW\\outputs', filename)
+    return send_from_directory('C:\\Users\\陈yk\\Desktop\\智能系统作业\\大作业\\一级项目Ⅱ(1)\\一级项目Ⅱ\\FlaskHouduan\\flaskb\\WWW\\outputs', filename)
 
 
 

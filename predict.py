@@ -7,7 +7,7 @@ import random
 import os
 num_objects=0
 def predict_image(image_data):
-    model = YOLO("C:\\Users\\陈yk\\Desktop\\flaskb\WWW\\bestv11a.pt")
+    model = YOLO("C:\\Users\\陈yk\\Desktop\\智能系统作业\\大作业\\一级项目Ⅱ(1)\\一级项目Ⅱ\\FlaskHouduan\\flaskb\\WWW\\bestv11a.pt")
 
     result = model.predict(image_data)
 
@@ -20,7 +20,7 @@ def predict_image(image_data):
 
         filename = datetime.now().strftime("%Y%m%d%H%M%S") + "_" + str(random_num) + "." + image_data.rsplit('.', 1)[1]
 
-        saveOutputs = "C:\\Users\\陈yk\\Desktop\\flaskb\WWW\\outputs\\" + filename
+        saveOutputs = "C:\\Users\\陈yk\\Desktop\\智能系统作业\\大作业\\一级项目Ⅱ(1)\\一级项目Ⅱ\\FlaskHouduan\\flaskb\\WWW\\outputs\\" + filename
 
         num_objects = len(r.boxes)
         # 在图像上显示检测的物体数量

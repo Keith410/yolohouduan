@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO 图像识别系统</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --bg-color: #f5f7fa;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        .upload-area {
+            border: 2px dashed #dce0e6;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            position: relative;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+        }
+
+        .upload-area input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .preview-box {
+            margin-top: 1rem;
+            display: none; /* 默认隐藏 */
+        }
+
+        img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 2rem;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            margin-top: 1rem;
+            color: #666;
+        }
+        
+        /* 简单的加载动画 */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📸 图像识别检测</h1>
+
+    <div class="upload-area" id="dropZone">
+        <p id="uploadText">点击或拖拽上传图片</p>
+        <input type="file" id="fileInput" accept="image/*">
+        
+        <div class="preview-box" id="previewBox">
+            <p style="font-size: 12px; color: #999;">原始图片:</p>
+            <img id="previewImg" src="" alt="预览">
+        </div>
+    </div>
+
+    <button id="submitBtn" onclick="uploadAndPredict()" disabled>开始识别</button>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>正在分析图片中...</p>
+    </div>
+
+    <div class="result-section" id="resultSection">
+        <h3>✅ 识别结果</h3>
+        <img id="resultImg" src="" alt="结果图片">
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const previewBox = document.getElementById('previewBox');
+    const previewImg = document.getElementById('previewImg');
+    const uploadText = document.getElementById('uploadText');
+    const submitBtn = document.getElementById('submitBtn');
+    const resultSection = document.getElementById('resultSection');
+    const resultImg = document.getElementById('resultImg');
+    const loading = document.getElementById('loading');
+
+    // 本地后端地址
+    const API_URL = 'http://127.0.0.1:5000'; 
+
+    let selectedFile = null;
+
+    // 1. 图片选择与预览
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            selectedFile = e.target.files[0];
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewBox.style.display = 'block';
+                uploadText.style.display = 'none';
+                submitBtn.disabled = false;
+                // 隐藏之前的旧结果
+                resultSection.style.display = 'none';
+            }
+            reader.readAsDataURL(selectedFile);
+        }
+    });
+
+    // 2. 上传并预测
+    async function uploadAndPredict() {
+        if (!selectedFile) return;
+
+        // UI 状态切换
+        submitBtn.disabled = true;
+        submitBtn.innerText = "处理中...";
+        loading.style.display = 'block';
+        resultSection.style.display = 'none';
+
+        try {
+            // 将文件转换为 Base64 字符串
+            const base64String = await toBase64(selectedFile);
+            
+            // 构建 Form Data
+            const formData = new FormData();
+            // 注意：你的后端需要的是去掉头部的base64字符串，还是完整的？
+            // 根据你的后端代码：image = base64.b64decode(img_base64)
+            // Python的b64decode通常不能处理 'data:image/jpeg;base64,' 前缀
+            // 所以这里我们需要去掉前缀
+            const cleanBase64 = base64String.split(',')[1];
+            formData.append('picture', cleanBase64);
+
+            // 发送请求
+            const response = await fetch(`${API_URL}/post`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.msg === "success") {
+                // 显示结果
+                // 后端返回的是文件名，我们需要拼接完整的 URL
+                const resultUrl = `${API_URL}/outputs/${data.res}`;
+                // 加个时间戳防止浏览器缓存同名图片
+                resultImg.src = resultUrl + "?t=" + new Date().getTime();
+                
+                resultSection.style.display = 'block';
+            } else {
+                alert('识别失败，请重试');
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert('连接服务器失败，请确保后台已启动并安装了 flask-cors');
+        } finally {
+            // 恢复 UI
+            loading.style.display = 'none';
+            submitBtn.disabled = false;
+            submitBtn.innerText = "开始识别";
+        }
+    }
+
+    // 辅助函数：File 转 Base64
+    function toBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
+    }
+</script>
+
+</body>
+</html>
